@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Popoyo Living: local business directory</title>
+<meta name="description" content="Find local businesses and services in Popoyo, Nicaragua: restaurants, surf, rentals, trades and more.">
+<style>
+:root{--bg:#eef4f3;--fg:#10262d;--mut:#4f666c;--card:#fff;--bd:#cfdcdb;--sea:#0b6e83;--seafg:#fff;--hero:#0d3b47;--herofg:#eaf6f6;--chip:#dcebea}
+@media (prefers-color-scheme:dark){:root{--bg:#0e1b1f;--fg:#e8f1f1;--mut:#9db3b6;--card:#15282d;--bd:#2a4349;--sea:#4cc3d9;--seafg:#06242b;--hero:#0a2b33;--herofg:#eaf6f6;--chip:#1d3a41}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.5 "Avenir Next","Segoe UI",Roboto,system-ui,sans-serif}
+header{background:var(--hero);color:var(--herofg);padding:40px 16px 28px}
+.in{max-width:960px;margin:0 auto}
+h1{font-size:clamp(2rem,6vw,3.2rem);line-height:1.05;margin:0 0 8px;letter-spacing:-.02em}
+header p{margin:0 0 18px;max-width:52ch;opacity:.9}
+input[type=search]{width:100%;font:inherit;padding:14px 16px;border-radius:10px;border:2px solid transparent;background:#fff;color:#10262d}
+input[type=search]:focus-visible,button:focus-visible,a:focus-visible{outline:3px solid var(--sea);outline-offset:2px}
+.chips{display:flex;gap:8px;flex-wrap:wrap;padding:16px 0 4px}
+.chip{border:1px solid var(--bd);background:var(--chip);color:var(--fg);border-radius:999px;padding:6px 14px;font:inherit;font-size:.92rem;cursor:pointer}
+.chip[aria-pressed=true]{background:var(--sea);color:var(--seafg);border-color:var(--sea);font-weight:600}
+main{padding:8px 16px 48px}
+.count{color:var(--mut);margin:8px 0 14px}
+.grid{display:grid;gap:12px;grid-template-columns:repeat(auto-fill,minmax(280px,1fr))}
+article{background:var(--card);border:1px solid var(--bd);border-left:5px solid var(--sea);border-radius:6px;padding:14px 16px}
+article h2{font-size:1.1rem;margin:0}
+.meta{color:var(--mut);font-size:.88rem;margin:2px 0 8px}
+article p{margin:0 0 10px;font-size:.95rem}
+.act{display:flex;gap:8px;flex-wrap:wrap}
+.act a{border:1px solid var(--sea);color:var(--sea);border-radius:6px;padding:6px 12px;text-decoration:none;font-weight:600;font-size:.9rem}
+.act a.wa{background:var(--sea);color:var(--seafg)}
+.note{background:var(--chip);border-radius:8px;padding:10px 14px;margin:12px 0;font-size:.92rem}
+footer{border-top:1px solid var(--bd);padding:20px 16px;color:var(--mut);font-size:.9rem}
+footer a{color:var(--sea)}
+</style>
+</head>
+<body>
+<header><div class="in">
+<h1>Popoyo Living</h1>
+<p>Local businesses and services around Popoyo and Playa Guasacate, all in one place.</p>
+<label for="q" style="position:absolute;left:-9999px">Search the directory</label>
+<input type="search" id="q" placeholder="Search by name, service or area">
+</div></header>
+<main><div class="in">
+<div class="chips" id="chips" role="group" aria-label="Filter by category"></div>
+<div id="sample" class="note" hidden>You’re seeing example entries. Add your Google Sheet link to <code>SHEET_CSV_URL</code> in index.html to show real listings.</div>
+<div id="err" class="note" hidden></div>
+<p class="count" id="count" aria-live="polite"></p>
+<div class="grid" id="grid"></div>
+</div></main>
+<footer><div class="in">
+Own a business in Popoyo? <a id="join" href="#">Ask to be listed</a>. Listings are added with the owner’s permission; tell us if anything needs correcting.
+</div></footer>
+<script>
+/* ===== Settings: edit these two lines ===== */
+const SHEET_CSV_URL = "";           // Google Sheet > File > Share > Publish to web > CSV link
+const CONTACT_LINK  = "mailto:you@example.com?subject=Popoyo%20directory%20listing"; // or https://wa.me/505XXXXXXXX
+/* ========================================== */
+
+const SAMPLE = [
+ {name:"Example Surf School",category:"Surf",phone:"+505 8888 0000 (WhatsApp)",area:"Popoyo",notes:"Example entry. Lessons and board rental."},
+ {name:"Example Plumber",category:"Trades",phone:"8888 0001",area:"Guasacate",notes:"Example entry. Repairs and installs."},
+ {name:"Example Taqueria",category:"Food",phone:"8888 0002",area:"Popoyo",notes:"Example entry. Lunch and dinner."}
+];
+let data=[],cat="All";
+const $=id=>document.getElementById(id);
+$("join").href=CONTACT_LINK;
+
+function parseCSV(t){
+  const rows=[];let r=[],f="",q=false;
+  for(let i=0;i<t.length;i++){
+    const c=t[i];
+    if(q){if(c=='"'){if(t[i+1]=='"'){f+='"';i++}else q=false}else f+=c}
+    else if(c=='"')q=true;
+    else if(c==","){r.push(f);f=""}
+    else if(c=="\n"||c=="\r"){if(c=="\r"&&t[i+1]=="\n")i++;r.push(f);f="";if(r.some(x=>x.trim()))rows.push(r);r=[]}
+    else f+=c;
+  }
+  if(f||r.length){r.push(f);rows.push(r)}
+  return rows;
+}
+function toObjs(rows){
+  const h=rows[0].map(x=>x.trim().toLowerCase());
+  return rows.slice(1).map(r=>{const o={};h.forEach((k,i)=>o[k]=(r[i]||"").trim());return o}).filter(o=>o.name);
+}
+function digits(s){return (s||"").replace(/\D/g,"")}
+function waNumber(p){let d=digits(p);if(d.length===8)d="505"+d;return d}
+
+function chips(){
+  const cats=["All",...new Set(data.map(d=>d.category).filter(Boolean))].sort((a,b)=>a==="All"?-1:b==="All"?1:a.localeCompare(b));
+  const box=$("chips");box.textContent="";
+  cats.forEach(c=>{
+    const b=document.createElement("button");b.className="chip";b.textContent=c;
+    b.setAttribute("aria-pressed",String(c===cat));
+    b.onclick=()=>{cat=c;chips();render()};
+    box.appendChild(b);
+  });
+}
+function render(){
+  const q=$("q").value.trim().toLowerCase();
+  const list=data.filter(d=>(cat==="All"||d.category===cat)&&(!q||[d.name,d.category,d.area,d.notes].join(" ").toLowerCase().includes(q)));
+  $("count").textContent=list.length+(list.length===1?" listing":" listings");
+  const g=$("grid");g.textContent="";
+  list.forEach(d=>{
+    const a=document.createElement("article");
+    const h=document.createElement("h2");h.textContent=d.name;a.appendChild(h);
+    const m=document.createElement("div");m.className="meta";
+    m.textContent=[d.category,d.area].filter(Boolean).join(", ");a.appendChild(m);
+    if(d.notes){const p=document.createElement("p");p.textContent=d.notes;a.appendChild(p)}
+    const act=document.createElement("div");act.className="act";
+    const dg=digits(d.phone);
+    if(dg.length>=7){
+      if(/whatsapp/i.test(d.phone)){
+        const w=document.createElement("a");w.className="wa";w.href="https://wa.me/"+waNumber(d.phone);w.textContent="WhatsApp";w.rel="noopener";act.appendChild(w);
+      }
+      const t=document.createElement("a");t.href="tel:+"+(dg.length===8?"505"+dg:dg);t.textContent="Call "+d.phone.replace(/\s*\(.*\)/,"");act.appendChild(t);
+    }
+    if(act.children.length)a.appendChild(act);
+    g.appendChild(a);
+  });
+}
+async function init(){
+  if(!SHEET_CSV_URL){data=SAMPLE;$("sample").hidden=false}
+  else{
+    try{
+      const r=await fetch(SHEET_CSV_URL);
+      if(!r.ok)throw new Error(r.status);
+      data=toObjs(parseCSV(await r.text()));
+    }catch(e){
+      data=[];$("err").hidden=false;$("err").textContent="The directory couldn’t load. Check that the sheet is published to the web as CSV, then refresh.";
+    }
+  }
+  chips();render();
+}
+$("q").addEventListener("input",render);
+init();
+</script>
+</body>
+</html>
