@@ -13,6 +13,13 @@ body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.5 "Avenir Next","
 header{background:var(--hero);color:var(--herofg);padding:40px 16px 28px}
 .in{max-width:960px;margin:0 auto}
 h1{font-size:clamp(2rem,6vw,3.2rem);line-height:1.05;margin:0 0 8px;letter-spacing:-.02em}
+ .site-logo {
+  width: 180px;
+  max-width: 100%;
+  height: auto;
+  display: block;
+  margin-bottom: 12px;
+}
 header p{margin:0 0 18px;max-width:52ch;opacity:.9}
 input[type=search]{width:100%;font:inherit;padding:14px 16px;border-radius:10px;border:2px solid transparent;background:#fff;color:#10262d}
 input[type=search]:focus-visible,button:focus-visible,a:focus-visible{outline:3px solid var(--sea);outline-offset:2px}
@@ -36,7 +43,9 @@ footer a{color:var(--sea)}
 </head>
 <body>
 <header><div class="in">
-<h1>Popoyo Living</h1>
+<h1>
+  <img src="logo.png" alt="Popoyo Living" class="site-logo">
+</h1>
 <p>Local businesses and services around Popoyo and Playa Guasacate, all in one place.</p>
 <label for="q" style="position:absolute;left:-9999px">Search the directory</label>
 <input type="search" id="q" placeholder="Search by name, service or area">
